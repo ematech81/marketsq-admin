@@ -1,69 +1,150 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import Shell from "@/components/Shell";
+import { ErrorText } from "@/components/form";
+import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+
+type Row = {
+  _id: string;
+  title: string;
+  price: number;
+  stock: number;
+  status: "draft" | "pending" | "active" | "rejected";
+  images: { url: string }[];
+  category?: { name: string };
+};
+
+const naira = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 });
+
+export default function ProductsPage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <Shell>
+      <ProductList />
+    </Shell>
+  );
+}
+
+function ProductList() {
+  const { token } = useAuth();
+  const [rows, setRows] = useState<Row[] | null>(null);
+  const [filter, setFilter] = useState("");
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    try {
+      const qs = filter ? `?status=${filter}` : "";
+      const res = await api<{ products: Row[] }>(`/admin/products${qs}`, { token });
+      setRows(res.products);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load products");
+    }
+  }, [token, filter]);
+
+  useEffect(() => {
+    // Deferred one tick so the fetch result is never set during the effect itself.
+    const timer = setTimeout(load, 0);
+    return () => clearTimeout(timer);
+  }, [load]);
+
+  async function remove(row: Row) {
+    if (!window.confirm(`Delete "${row.title}"? This cannot be undone.`)) return;
+    try {
+      await api(`/admin/products/${row._id}`, { method: "DELETE", token });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete the product");
+    }
+  }
+
+  return (
+    <>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-3xl font-bold">Products</h1>
+        <Link href="/products/new" className="bg-accent px-5 py-3 font-medium text-white hover:opacity-90">
+          Add product
+        </Link>
+      </div>
+
+      <div className="mb-4 flex items-center gap-3 text-sm">
+        <label htmlFor="status">Show</label>
+        <select
+          id="status"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="border border-foreground/30 bg-white px-3 py-2"
+        >
+          <option value="">All</option>
+          <option value="active">Live</option>
+          <option value="draft">Drafts</option>
+        </select>
+      </div>
+
+      <ErrorText message={error} />
+
+      {rows === null ? (
+        <p className="text-foreground/60">Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="border border-foreground/15 p-6 text-foreground/70">
+          No products yet. Add a category first, then click Add product.
+        </p>
+      ) : (
+        <div className="overflow-x-auto border border-foreground/15">
+          <table className="w-full min-w-160 text-left text-sm">
+            <thead className="border-b border-foreground/15 bg-foreground/3">
+              <tr>
+                <th className="p-3 font-medium">Product</th>
+                <th className="p-3 font-medium">Category</th>
+                <th className="p-3 font-medium">Price</th>
+                <th className="p-3 font-medium">Stock</th>
+                <th className="p-3 font-medium">Status</th>
+                <th className="p-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r._id} className="border-b border-foreground/10 last:border-0">
+                  <td className="p-3">
+                    <div className="flex items-center gap-3">
+                      {r.images[0] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={r.images[0].url} alt="" className="h-12 w-12 object-cover" />
+                      ) : (
+                        <span className="flex h-12 w-12 items-center justify-center bg-foreground/5 text-xs text-foreground/40">
+                          None
+                        </span>
+                      )}
+                      <span className="font-medium">{r.title}</span>
+                    </div>
+                  </td>
+                  <td className="p-3">{r.category?.name ?? "-"}</td>
+                  <td className="p-3">{naira.format(r.price)}</td>
+                  <td className="p-3">{r.stock === 0 ? <span className="text-red-800">Out of stock</span> : r.stock}</td>
+                  <td className="p-3">
+                    <span
+                      className={`px-2 py-1 text-xs font-medium ${
+                        r.status === "active" ? "bg-green-100 text-green-900" : "bg-foreground/10"
+                      }`}
+                    >
+                      {r.status === "active" ? "Live" : r.status === "draft" ? "Draft" : r.status}
+                    </span>
+                  </td>
+                  <td className="p-3 text-right">
+                    <Link href={`/products/${r._id}`} className="mr-4 hover:text-accent">
+                      Edit
+                    </Link>
+                    <button onClick={() => remove(r)} className="text-red-800 hover:underline">
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      )}
+    </>
   );
 }

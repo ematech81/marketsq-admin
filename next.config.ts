@@ -1,9 +1,7 @@
 import type { NextConfig } from "next";
 
+// The dashboard is a signed-in admin app that renders in the browser, so it does not use cacheComponents.
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
   turbopack: {
     rules: {
       "*.css": {
