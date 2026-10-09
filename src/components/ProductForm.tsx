@@ -99,7 +99,7 @@ export default function ProductForm({ productId, initial }: { productId?: string
           variants,
         },
       });
-      router.push("/");
+      router.push("/products");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save the product");
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -133,7 +133,7 @@ export default function ProductForm({ productId, initial }: { productId?: string
         ))}
       </SelectField>
       {categories?.length === 0 && (
-        <p className="text-sm text-foreground/70">
+        <p className="text-sm text-muted">
           You have no categories yet.{" "}
           <Link href="/categories" className="text-accent underline">
             Add one first
@@ -176,7 +176,7 @@ export default function ProductForm({ productId, initial }: { productId?: string
         <p className="mb-1 text-sm font-medium">Images (up to 8, the first is the main image)</p>
         <div className="mb-3 grid grid-cols-4 gap-3 sm:grid-cols-5">
           {v.images.map((img, i) => (
-            <div key={img.url} className="relative aspect-square border border-foreground/20">
+            <div key={img.url} className="relative aspect-square border border-line">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={img.url} alt={`Product image ${i + 1}`} className="h-full w-full object-cover" />
               {i === 0 && <span className="absolute left-0 top-0 bg-foreground px-1 text-xs text-white">Main</span>}
@@ -191,7 +191,7 @@ export default function ProductForm({ productId, initial }: { productId?: string
             </div>
           ))}
         </div>
-        <label className="inline-block cursor-pointer border border-foreground/40 px-4 py-2 text-sm hover:border-accent">
+        <label className="inline-block cursor-pointer border border-[#C6C6CB] px-4 py-2 text-sm hover:border-accent">
           {uploading ? "Uploading…" : "Add images"}
           <input type="file" accept="image/*" multiple onChange={onFiles} disabled={uploading} className="sr-only" />
         </label>
@@ -206,14 +206,14 @@ export default function ProductForm({ productId, initial }: { productId?: string
               placeholder="Size"
               value={x.name}
               onChange={(e) => set("variants", v.variants.map((y, n) => (n === i ? { ...y, name: e.target.value } : y)))}
-              className="border border-foreground/30 px-3 py-3"
+              className="border border-[#C6C6CB] px-3 py-3"
             />
             <input
               aria-label="Option values"
               placeholder="S, M, L, XL"
               value={x.options}
               onChange={(e) => set("variants", v.variants.map((y, n) => (n === i ? { ...y, options: e.target.value } : y)))}
-              className="border border-foreground/30 px-3 py-3"
+              className="border border-[#C6C6CB] px-3 py-3"
             />
             <button
               type="button"
@@ -227,7 +227,7 @@ export default function ProductForm({ productId, initial }: { productId?: string
         <button
           type="button"
           onClick={() => set("variants", [...v.variants, { name: "", options: "" }])}
-          className="border border-foreground/40 px-4 py-2 text-sm hover:border-accent"
+          className="border border-[#C6C6CB] px-4 py-2 text-sm hover:border-accent"
         >
           Add an option
         </button>
@@ -242,7 +242,7 @@ export default function ProductForm({ productId, initial }: { productId?: string
         <PrimaryButton type="submit" busy={busy} disabled={uploading}>
           {productId ? "Save changes" : "Add product"}
         </PrimaryButton>
-        <Link href="/" className="border border-foreground/40 px-5 py-3 hover:border-accent">
+        <Link href="/products" className="inline-flex min-h-11 items-center rounded-sm border border-[#C6C6CB] bg-white px-5 text-sm font-semibold hover:border-foreground">
           Cancel
         </Link>
       </div>

@@ -2,57 +2,100 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
+const STORE_URL = process.env.NEXT_PUBLIC_STORE_URL ?? "http://localhost:3000";
+
 const links = [
-  { href: "/", label: "Products" },
+  { href: "/", label: "Overview" },
+  { href: "/orders", label: "Orders" },
+  { href: "/vendors", label: "Vendors" },
+  { href: "/customers", label: "Customers" },
+  { href: "/products", label: "Products" },
   { href: "/categories", label: "Categories" },
+  { href: "/delivery", label: "Delivery fees" },
 ];
 
 // Wraps every signed-in page: redirects to the login page when there is no admin session.
 export default function Shell({ children }: { children: React.ReactNode }) {
-  const { user, loading, signOut } = useAuth();
+  const { user, token, loading, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [badges, setBadges] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
 
-  if (loading || !user) return <p className="p-8 text-foreground/60">Loading…</p>;
+  // The orange numbers: applications waiting for review, and new orders waiting to be confirmed.
+  useEffect(() => {
+    if (!token) return;
+    Promise.all([
+      api<{ vendors: unknown[] }>("/admin/vendors?status=pending", { token }),
+      api<{ counts: { toConfirm: number } }>("/admin/orders?filter=open", { token }),
+    ])
+      .then(([v, o]) => setBadges({ "/vendors": v.vendors.length, "/orders": o.counts.toConfirm }))
+      .catch(() => setBadges({}));
+  }, [token, pathname]);
+
+  if (loading || !user) return <p className="p-8 text-muted">Loading…</p>;
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
-      <aside className="border-b border-foreground/15 md:w-56 md:border-b-0 md:border-r">
-        <div className="flex items-center justify-between px-5 py-4 md:block">
-          <p className="font-display text-lg font-bold leading-tight">
+    <div className="flex min-h-screen flex-col bg-background">
+      <header className="bg-foreground text-white">
+        <div className="flex min-h-15 items-center justify-between gap-3 px-6 py-2.5">
+          <Link href="/" className="flex items-center gap-2.5 font-display text-xl font-bold text-white">
+            <span className="inline-block size-3.5 bg-accent" aria-hidden />
             Square Market
-            <span className="block text-xs font-normal text-foreground/60">Dashboard</span>
-          </p>
+            <span className="font-sans text-[13px] font-medium text-[#D5D8DC]">Admin</span>
+          </Link>
+          <div className="flex items-center gap-4 text-sm">
+            <a href={STORE_URL} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center text-white">
+              View store
+            </a>
+            <button onClick={signOut} className="inline-flex min-h-11 cursor-pointer items-center text-white">
+              Sign out
+            </button>
+            <span
+              title={user.email}
+              className="flex size-9 items-center justify-center bg-accent text-sm font-bold text-foreground"
+            >
+              {user.name.charAt(0).toUpperCase()}
+            </span>
+          </div>
         </div>
-        <nav className="flex gap-1 px-3 pb-3 md:flex-col md:pb-0">
+      </header>
+
+      <div className="flex flex-1 flex-col items-stretch md:flex-row">
+        <nav
+          aria-label="Admin"
+          className="flex flex-row flex-wrap gap-0.5 border-b border-line bg-white p-4 md:w-60 md:shrink-0 md:flex-col md:border-r md:border-b-0"
+        >
           {links.map((l) => {
-            const active = l.href === "/" ? pathname === "/" || pathname.startsWith("/products") : pathname.startsWith(l.href);
+            const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
+            const count = badges[l.href] ?? 0;
             return (
               <Link
                 key={l.href}
                 href={l.href}
-                className={`px-3 py-2 text-sm ${active ? "bg-accent font-medium text-white" : "hover:bg-foreground/5"}`}
+                className={`flex min-h-11 items-center justify-between border-l-[3px] px-3 text-[15px] text-foreground ${
+                  active ? "border-accent bg-background font-semibold" : "border-transparent font-medium hover:bg-background"
+                }`}
               >
-                {l.label}
+                <span>{l.label}</span>
+                {count > 0 && (
+                  <span className="ml-3 inline-flex h-5 min-w-5 items-center justify-center bg-accent px-1.5 text-xs font-bold">
+                    {count}
+                  </span>
+                )}
               </Link>
             );
           })}
         </nav>
-        <div className="hidden px-5 py-6 text-sm md:block">
-          <p className="truncate text-foreground/60">{user.email}</p>
-          <button onClick={signOut} className="mt-2 hover:text-accent">
-            Sign out
-          </button>
-        </div>
-      </aside>
-      <main className="flex-1 px-5 py-8 md:px-10">{children}</main>
+        <main className="min-w-0 flex-1 px-6 pt-8 pb-14">{children}</main>
+      </div>
     </div>
   );
 }

@@ -96,20 +96,20 @@ function Categories() {
       </div>
 
       {items === null ? (
-        <p className="text-foreground/60">Loading…</p>
+        <p className="text-muted">Loading…</p>
       ) : items.length === 0 ? (
-        <p className="text-foreground/70">No categories yet. Add your first one above.</p>
+        <p className="text-muted">No categories yet. Add your first one above.</p>
       ) : (
-        <ul className="max-w-md border border-foreground/15">
+        <ul className="max-w-md border border-line">
           {items.map((c) => (
-            <li key={c._id} className="flex items-center justify-between gap-3 border-b border-foreground/10 p-3 last:border-0">
+            <li key={c._id} className="flex items-center justify-between gap-3 border-b border-line p-3 last:border-0">
               {editing === c._id ? (
                 <>
                   <input
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     aria-label="Category name"
-                    className="flex-1 border border-foreground/30 px-2 py-1"
+                    className="flex-1 border border-[#C6C6CB] px-2 py-1"
                   />
                   <button onClick={() => rename(c._id)} className="text-accent hover:underline">
                     Save

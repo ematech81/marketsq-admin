@@ -56,7 +56,7 @@ function Editor() {
     <>
       <h1 className="mb-6 text-3xl font-bold">Edit product</h1>
       <ErrorText message={error} />
-      {initial ? <ProductForm productId={id} initial={initial} /> : !error && <p className="text-foreground/60">Loading…</p>}
+      {initial ? <ProductForm productId={id} initial={initial} /> : !error && <p className="text-muted">Loading…</p>}
     </>
   );
 }

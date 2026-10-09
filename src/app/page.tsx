@@ -4,44 +4,51 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import Shell from "@/components/Shell";
 import { ErrorText } from "@/components/form";
+import VendorTable, { type VendorRow } from "@/components/VendorTable";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
-type Row = {
-  _id: string;
-  title: string;
-  price: number;
-  stock: number;
-  status: "draft" | "pending" | "active" | "rejected";
-  images: { url: string }[];
-  category?: { name: string };
+type Overview = {
+  kpis: { sales: number; orders: number; activeVendors: number; applicationsToReview: number };
+  applications: VendorRow[];
+  recentOrders: { orderNumber: string; customer: string; total: number; status: string; needsAttention?: string; createdAt: string }[];
 };
 
 const naira = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 });
 
-export default function ProductsPage() {
+const PILL: Record<string, string> = {
+  Delivered: "bg-[#DCFCE7] text-[#14532D]",
+  "Awaiting payment": "bg-surface text-foreground",
+  "Needs attention": "bg-[#FEF3F2] text-[#B42318]",
+  Cancelled: "bg-surface text-muted",
+  New: "bg-accent text-foreground",
+};
+
+const panel = "rounded-sm border border-line bg-white";
+const panelHead = "flex flex-wrap items-center justify-between gap-2 border-b border-line px-6 py-5";
+const th = "px-4 py-3 font-semibold first:pl-6 last:pr-6";
+const td = "px-4 py-3.5 first:pl-6 last:pr-6";
+
+export default function OverviewPage() {
   return (
     <Shell>
-      <ProductList />
+      <Content />
     </Shell>
   );
 }
 
-function ProductList() {
+function Content() {
   const { token } = useAuth();
-  const [rows, setRows] = useState<Row[] | null>(null);
-  const [filter, setFilter] = useState("");
+  const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     try {
-      const qs = filter ? `?status=${filter}` : "";
-      const res = await api<{ products: Row[] }>(`/admin/products${qs}`, { token });
-      setRows(res.products);
+      setData(await api<Overview>("/admin/overview", { token }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load products");
+      setError(err instanceof Error ? err.message : "Could not load the overview");
     }
-  }, [token, filter]);
+  }, [token]);
 
   useEffect(() => {
     // Deferred one tick so the fetch result is never set during the effect itself.
@@ -49,102 +56,98 @@ function ProductList() {
     return () => clearTimeout(timer);
   }, [load]);
 
-  async function remove(row: Row) {
-    if (!window.confirm(`Delete "${row.title}"? This cannot be undone.`)) return;
-    try {
-      await api(`/admin/products/${row._id}`, { method: "DELETE", token });
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete the product");
-    }
-  }
+  const kpis = data
+    ? [
+        { label: "Sales", value: naira.format(data.kpis.sales), bar: "border-t-foreground" },
+        { label: "Orders", value: String(data.kpis.orders), bar: "border-t-foreground" },
+        { label: "Active vendors", value: String(data.kpis.activeVendors), bar: "border-t-foreground" },
+        { label: "Applications to review", value: String(data.kpis.applicationsToReview), bar: "border-t-accent" },
+      ]
+    : [];
 
   return (
-    <>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-3xl font-bold">Products</h1>
-        <Link href="/products/new" className="bg-accent px-5 py-3 font-medium text-white hover:opacity-90">
-          Add product
-        </Link>
-      </div>
-
-      <div className="mb-4 flex items-center gap-3 text-sm">
-        <label htmlFor="status">Show</label>
-        <select
-          id="status"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="border border-foreground/30 bg-white px-3 py-2"
-        >
-          <option value="">All</option>
-          <option value="active">Live</option>
-          <option value="draft">Drafts</option>
-        </select>
-      </div>
-
+    <div className="flex flex-col gap-8">
+      <h1 className="text-[32px] font-bold tracking-[-0.02em]">Overview</h1>
       <ErrorText message={error} />
-
-      {rows === null ? (
-        <p className="text-foreground/60">Loading…</p>
-      ) : rows.length === 0 ? (
-        <p className="border border-foreground/15 p-6 text-foreground/70">
-          No products yet. Add a category first, then click Add product.
-        </p>
+      {!data ? (
+        !error && <p className="text-muted">Loading…</p>
       ) : (
-        <div className="overflow-x-auto border border-foreground/15">
-          <table className="w-full min-w-160 text-left text-sm">
-            <thead className="border-b border-foreground/15 bg-foreground/3">
-              <tr>
-                <th className="p-3 font-medium">Product</th>
-                <th className="p-3 font-medium">Category</th>
-                <th className="p-3 font-medium">Price</th>
-                <th className="p-3 font-medium">Stock</th>
-                <th className="p-3 font-medium">Status</th>
-                <th className="p-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r._id} className="border-b border-foreground/10 last:border-0">
-                  <td className="p-3">
-                    <div className="flex items-center gap-3">
-                      {r.images[0] ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={r.images[0].url} alt="" className="h-12 w-12 object-cover" />
-                      ) : (
-                        <span className="flex h-12 w-12 items-center justify-center bg-foreground/5 text-xs text-foreground/40">
-                          None
-                        </span>
-                      )}
-                      <span className="font-medium">{r.title}</span>
-                    </div>
-                  </td>
-                  <td className="p-3">{r.category?.name ?? "-"}</td>
-                  <td className="p-3">{naira.format(r.price)}</td>
-                  <td className="p-3">{r.stock === 0 ? <span className="text-red-800">Out of stock</span> : r.stock}</td>
-                  <td className="p-3">
-                    <span
-                      className={`px-2 py-1 text-xs font-medium ${
-                        r.status === "active" ? "bg-green-100 text-green-900" : "bg-foreground/10"
-                      }`}
-                    >
-                      {r.status === "active" ? "Live" : r.status === "draft" ? "Draft" : r.status}
-                    </span>
-                  </td>
-                  <td className="p-3 text-right">
-                    <Link href={`/products/${r._id}`} className="mr-4 hover:text-accent">
-                      Edit
-                    </Link>
-                    <button onClick={() => remove(r)} className="text-red-800 hover:underline">
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <section className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+            {kpis.map((k) => (
+              <div key={k.label} className={`flex flex-col gap-2 rounded-sm border border-t-[3px] border-line bg-white p-5 ${k.bar}`}>
+                <span className="text-sm text-[#45474B]">{k.label}</span>
+                <span className="font-display text-3xl font-bold">{k.value}</span>
+              </div>
+            ))}
+          </section>
+
+          <section className={panel}>
+            <div className={panelHead}>
+              <div>
+                <h2 className="font-display text-[22px] font-semibold">Vendor applications</h2>
+                <p className="mt-1 text-sm text-[#45474B]">
+                  {data.applications.length === 0 ? "Nothing waiting for review" : `${data.applications.length} waiting for review`}
+                </p>
+              </div>
+              <Link href="/vendors" className="text-sm font-semibold text-accent-ink hover:text-foreground">
+                View all vendors
+              </Link>
+            </div>
+            {data.applications.length > 0 && <VendorTable rows={data.applications} onChanged={load} />}
+          </section>
+
+          <section className={panel}>
+            <div className={panelHead}>
+              <h2 className="font-display text-[22px] font-semibold">Recent orders</h2>
+              <Link href="/orders" className="text-sm font-semibold text-accent-ink hover:text-foreground">
+                View all orders
+              </Link>
+            </div>
+            {data.recentOrders.length === 0 ? (
+              <p className="px-6 py-5 text-sm text-[#45474B]">No orders yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-150 border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-[#F3F4F5] text-left">
+                      <th className={th}>Order</th>
+                      <th className={th}>Customer</th>
+                      <th className={th}>Placed</th>
+                      <th className={th}>Total</th>
+                      <th className={th}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.recentOrders.map((o) => (
+                      <tr key={o.orderNumber} className="border-t border-line">
+                        <td className={td}>
+                          <Link href={`/orders/${o.orderNumber}`} className="font-semibold text-accent-ink hover:text-foreground">
+                            {o.orderNumber}
+                          </Link>
+                        </td>
+                        <td className={td}>{o.customer}</td>
+                        <td className={`${td} text-[#45474B]`}>
+                          {new Date(o.createdAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}
+                        </td>
+                        <td className={`${td} font-display text-base font-bold`}>{naira.format(o.total)}</td>
+                        <td className={td}>
+                          <span
+                            title={o.needsAttention}
+                            className={`inline-block rounded-sm px-2.5 py-1 text-[13px] font-semibold ${PILL[o.status] ?? "bg-[#FBEAE4] text-[#8A3219]"}`}
+                          >
+                            {o.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </>
       )}
-    </>
+    </div>
   );
 }
