@@ -16,7 +16,7 @@ const TABS = [
 
 export default function VendorsPage() {
   return (
-    <Shell>
+    <Shell adminOnly>
       <Vendors />
     </Shell>
   );

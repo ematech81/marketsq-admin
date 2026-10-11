@@ -26,7 +26,7 @@ const td = "px-4 py-3.5 first:pl-6 last:pr-6";
 
 export default function CustomersPage() {
   return (
-    <Shell>
+    <Shell adminOnly>
       <Customers />
     </Shell>
   );

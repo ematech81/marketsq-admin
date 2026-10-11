@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import Shell from "@/components/Shell";
 import { ErrorText } from "@/components/form";
+import VendorOverview from "@/components/VendorOverview";
 import VendorTable, { type VendorRow } from "@/components/VendorTable";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -32,9 +33,15 @@ const td = "px-4 py-3.5 first:pl-6 last:pr-6";
 export default function OverviewPage() {
   return (
     <Shell>
-      <Content />
+      <RoleHome />
     </Shell>
   );
+}
+
+// Vendors and the store owner see different home screens.
+function RoleHome() {
+  const { user } = useAuth();
+  return user?.role === "vendor" ? <VendorOverview /> : <Content />;
 }
 
 function Content() {

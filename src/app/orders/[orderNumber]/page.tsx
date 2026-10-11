@@ -63,7 +63,7 @@ const h2 = "font-display text-lg font-semibold";
 
 export default function OrderPage() {
   return (
-    <Shell>
+    <Shell adminOnly>
       <Detail />
     </Shell>
   );

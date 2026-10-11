@@ -30,12 +30,13 @@ export default function EditProductPage() {
 
 function Editor() {
   const { id } = useParams<{ id: string }>();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const base = user?.role === "vendor" ? "/vendor" : "/admin";
   const [initial, setInitial] = useState<ProductValues | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    api<{ product: ApiProduct }>(`/admin/products/${id}`, { token })
+    api<{ product: ApiProduct }>(`${base}/products/${id}`, { token })
       .then(({ product: p }) =>
         setInitial({
           title: p.title,
@@ -44,13 +45,13 @@ function Editor() {
           price: String(p.price),
           compareAtPrice: p.compareAtPrice ? String(p.compareAtPrice) : "",
           stock: String(p.stock),
-          status: p.status === "active" ? "active" : "draft",
+          status: p.status === "draft" ? "draft" : "active",
           images: p.images.map((i) => ({ url: i.url, publicId: i.publicId ?? "" })),
           variants: p.variants.map((x) => ({ name: x.name, options: x.options.join(", ") })),
         }),
       )
       .catch((err) => setError(err instanceof Error ? err.message : "Could not load the product"));
-  }, [id, token]);
+  }, [id, token, base]);
 
   return (
     <>

@@ -14,7 +14,7 @@ const blank = (): Rows => Object.fromEntries(NIGERIA_STATES.map((s) => [s, { fee
 
 export default function DeliveryPage() {
   return (
-    <Shell>
+    <Shell adminOnly>
       <Delivery />
     </Shell>
   );

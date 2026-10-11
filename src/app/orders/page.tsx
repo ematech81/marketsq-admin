@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import Shell from "@/components/Shell";
 import { ErrorText } from "@/components/form";
+import VendorOrders from "@/components/VendorOrders";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -40,9 +41,15 @@ const td = "px-4 py-3.5 first:pl-6 last:pr-6";
 export default function OrdersPage() {
   return (
     <Shell>
-      <Orders />
+      <RoleOrders />
     </Shell>
   );
+}
+
+// Vendors see their own shipments; the store owner sees every order.
+function RoleOrders() {
+  const { user } = useAuth();
+  return user?.role === "vendor" ? <VendorOrders /> : <Orders />;
 }
 
 function Orders() {

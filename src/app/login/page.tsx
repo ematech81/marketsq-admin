@@ -29,7 +29,7 @@ export default function LoginPage() {
   return (
     <main className="mx-auto w-full max-w-sm px-6 py-20">
       <h1 className="text-3xl font-bold">Square Market</h1>
-      <p className="mb-8 text-muted">Admin dashboard</p>
+      <p className="mb-8 text-muted">Sign in to manage your store</p>
       <form onSubmit={onSubmit} className="space-y-4">
         <ErrorText message={error} />
         <Field label="Email" name="email" type="email" autoComplete="email" required />

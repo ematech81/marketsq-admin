@@ -35,7 +35,10 @@ export const emptyProduct: ProductValues = {
 type Category = { _id: string; name: string };
 
 export default function ProductForm({ productId, initial }: { productId?: string; initial: ProductValues }) {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  // Vendors use their own product tools; the store owner uses the admin ones.
+  const isVendor = user?.role === "vendor";
+  const base = isVendor ? "/vendor" : "/admin";
   const router = useRouter();
   const [v, setV] = useState<ProductValues>(initial);
   const [categories, setCategories] = useState<Category[] | null>(null);
@@ -63,7 +66,7 @@ export default function ProductForm({ productId, initial }: { productId?: string
     setError("");
     try {
       const uploaded: UploadedImage[] = [];
-      for (const file of files) uploaded.push(await uploadImage(file, token));
+      for (const file of files) uploaded.push(await uploadImage(file, token, `${base}/uploads/sign`));
       setV((p) => ({ ...p, images: [...p.images, ...uploaded] }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Image upload failed");
@@ -84,7 +87,7 @@ export default function ProductForm({ productId, initial }: { productId?: string
         }))
         .filter((x) => x.name && x.options.length > 0);
 
-      await api(productId ? `/admin/products/${productId}` : "/admin/products", {
+      await api(productId ? `${base}/products/${productId}` : `${base}/products`, {
         method: productId ? "PUT" : "POST",
         token,
         body: {
@@ -234,7 +237,7 @@ export default function ProductForm({ productId, initial }: { productId?: string
       </section>
 
       <SelectField label="Status" value={v.status} onChange={(e) => set("status", e.target.value as "active" | "draft")}>
-        <option value="active">Live on the website</option>
+        <option value="active">{isVendor ? "Publish (the store checks it first)" : "Live on the website"}</option>
         <option value="draft">Draft (hidden)</option>
       </SelectField>
 

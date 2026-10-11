@@ -18,6 +18,7 @@ export type VendorRow = {
   bank: { bankName: string; accountNumber: string; accountName: string };
   status: "pending" | "approved" | "rejected" | "suspended";
   rejectionReason?: string;
+  commissionRate?: number | null;
   createdAt: string;
   user?: { name: string; email: string; phone: string };
 };
@@ -54,6 +55,30 @@ export default function VendorTable({ rows, onChanged }: { rows: VendorRow[]; on
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save the decision");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  // Gives one vendor their own commission rate. Leaving it empty goes back to the store's default rate.
+  async function setRate(row: VendorRow) {
+    const answer = window.prompt(
+      `Commission for ${row.businessName} (percent). Leave empty to use the store's default rate.`,
+      row.commissionRate == null ? "" : String(row.commissionRate),
+    );
+    if (answer === null) return;
+    const value = answer.trim() === "" ? null : Number(answer);
+    if (value !== null && (Number.isNaN(value) || value < 0 || value > 100)) {
+      setError("Enter a number from 0 to 100.");
+      return;
+    }
+    setBusyId(row._id);
+    setError("");
+    try {
+      await api(`/admin/vendors/${row._id}/commission`, { method: "PATCH", token, body: { commissionRate: value } });
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save the commission");
     } finally {
       setBusyId(null);
     }
@@ -128,14 +153,24 @@ export default function VendorTable({ rows, onChanged }: { rows: VendorRow[]; on
                       )}
                     </>
                   ) : v.status === "approved" ? (
-                    <button
-                      type="button"
-                      disabled={busyId === v._id}
-                      onClick={() => decide(v, "suspended")}
-                      className={`${btn} border border-[#C6C6CB] bg-white text-[#B42318]`}
-                    >
-                      Suspend
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        disabled={busyId === v._id}
+                        onClick={() => setRate(v)}
+                        className={`${btn} mr-2 border border-[#C6C6CB] bg-white text-foreground`}
+                      >
+                        Commission: {v.commissionRate == null ? "default" : `${v.commissionRate}%`}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busyId === v._id}
+                        onClick={() => decide(v, "suspended")}
+                        className={`${btn} border border-[#C6C6CB] bg-white text-[#B42318]`}
+                      >
+                        Suspend
+                      </button>
+                    </>
                   ) : (
                     <button
                       type="button"

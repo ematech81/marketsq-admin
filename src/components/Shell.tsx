@@ -8,39 +8,57 @@ import { useAuth } from "@/lib/auth";
 
 const STORE_URL = process.env.NEXT_PUBLIC_STORE_URL ?? "http://localhost:3000";
 
-const links = [
+// The store owner and vendors see different menus.
+const ADMIN_LINKS = [
   { href: "/", label: "Overview" },
   { href: "/orders", label: "Orders" },
   { href: "/vendors", label: "Vendors" },
   { href: "/customers", label: "Customers" },
   { href: "/products", label: "Products" },
+  { href: "/payouts", label: "Payouts" },
   { href: "/categories", label: "Categories" },
   { href: "/delivery", label: "Delivery fees" },
+  { href: "/settings", label: "Settings" },
 ];
 
-// Wraps every signed-in page: redirects to the login page when there is no admin session.
-export default function Shell({ children }: { children: React.ReactNode }) {
+const VENDOR_LINKS = [
+  { href: "/", label: "Overview" },
+  { href: "/orders", label: "Orders" },
+  { href: "/products", label: "Products" },
+  { href: "/wallet", label: "Wallet" },
+];
+
+// Wraps every signed-in page: redirects to the login page when there is no session.
+export default function Shell({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
   const { user, token, loading, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [badges, setBadges] = useState<Record<string, number>>({});
+  const isAdmin = user?.role === "admin";
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
 
-  // The orange numbers: applications waiting for review, and new orders waiting to be confirmed.
+  // The orange numbers: things waiting for you.
   useEffect(() => {
-    if (!token) return;
-    Promise.all([
-      api<{ vendors: unknown[] }>("/admin/vendors?status=pending", { token }),
-      api<{ counts: { toConfirm: number } }>("/admin/orders?filter=open", { token }),
-    ])
-      .then(([v, o]) => setBadges({ "/vendors": v.vendors.length, "/orders": o.counts.toConfirm }))
+    if (!token || !user) return;
+    const jobs = isAdmin
+      ? [
+          api<{ vendors: unknown[] }>("/admin/vendors?status=pending", { token }).then((v) => ["/vendors", v.vendors.length] as const),
+          api<{ counts: { toConfirm: number } }>("/admin/orders?filter=open", { token }).then((o) => ["/orders", o.counts.toConfirm] as const),
+          api<{ payouts: unknown[] }>("/admin/payouts?status=requested", { token }).then((p) => ["/payouts", p.payouts.length] as const),
+          api<{ products: unknown[] }>("/admin/products?status=pending", { token }).then((p) => ["/products", p.products.length] as const),
+        ]
+      : [api<{ counts: { toConfirm: number } }>("/vendor/orders?filter=open", { token }).then((o) => ["/orders", o.counts.toConfirm] as const)];
+    Promise.all(jobs)
+      .then((rows) => setBadges(Object.fromEntries(rows)))
       .catch(() => setBadges({}));
-  }, [token, pathname]);
+  }, [token, user, isAdmin, pathname]);
 
   if (loading || !user) return <p className="p-8 text-muted">Loading…</p>;
+
+  const links = isAdmin ? ADMIN_LINKS : VENDOR_LINKS;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -49,7 +67,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <Link href="/" className="flex items-center gap-2.5 font-display text-xl font-bold text-white">
             <span className="inline-block size-3.5 bg-accent" aria-hidden />
             Square Market
-            <span className="font-sans text-[13px] font-medium text-[#D5D8DC]">Admin</span>
+            <span className="font-sans text-[13px] font-medium text-[#D5D8DC]">{isAdmin ? "Admin" : "Vendor"}</span>
           </Link>
           <div className="flex items-center gap-4 text-sm">
             <a href={STORE_URL} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center text-white">
@@ -58,10 +76,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <button onClick={signOut} className="inline-flex min-h-11 cursor-pointer items-center text-white">
               Sign out
             </button>
-            <span
-              title={user.email}
-              className="flex size-9 items-center justify-center bg-accent text-sm font-bold text-foreground"
-            >
+            <span title={user.email} className="flex size-9 items-center justify-center bg-accent text-sm font-bold text-foreground">
               {user.name.charAt(0).toUpperCase()}
             </span>
           </div>
@@ -70,7 +85,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
       <div className="flex flex-1 flex-col items-stretch md:flex-row">
         <nav
-          aria-label="Admin"
+          aria-label={isAdmin ? "Admin" : "Vendor"}
           className="flex flex-row flex-wrap gap-0.5 border-b border-line bg-white p-4 md:w-60 md:shrink-0 md:flex-col md:border-r md:border-b-0"
         >
           {links.map((l) => {
@@ -86,15 +101,19 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               >
                 <span>{l.label}</span>
                 {count > 0 && (
-                  <span className="ml-3 inline-flex h-5 min-w-5 items-center justify-center bg-accent px-1.5 text-xs font-bold">
-                    {count}
-                  </span>
+                  <span className="ml-3 inline-flex h-5 min-w-5 items-center justify-center bg-accent px-1.5 text-xs font-bold">{count}</span>
                 )}
               </Link>
             );
           })}
         </nav>
-        <main className="min-w-0 flex-1 px-6 pt-8 pb-14">{children}</main>
+        <main className="min-w-0 flex-1 px-6 pt-8 pb-14">
+          {adminOnly && !isAdmin ? (
+            <p className="rounded-sm border border-line bg-white p-6 text-[15px]">This page is for the store owner.</p>
+          ) : (
+            children
+          )}
+        </main>
       </div>
     </div>
   );

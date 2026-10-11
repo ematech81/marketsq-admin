@@ -5,7 +5,7 @@ export type UploadedImage = { url: string; publicId: string };
 const MAX_BYTES = 10 * 1024 * 1024;
 
 // Gets a signature from our API, then uploads the file straight to Cloudinary.
-export async function uploadImage(file: File, token: string): Promise<UploadedImage> {
+export async function uploadImage(file: File, token: string, signPath = "/admin/uploads/sign"): Promise<UploadedImage> {
   if (!file.type.startsWith("image/")) throw new Error(`${file.name} is not an image`);
   if (file.size > MAX_BYTES) throw new Error(`${file.name} is larger than 10 MB`);
 
@@ -15,7 +15,7 @@ export async function uploadImage(file: File, token: string): Promise<UploadedIm
     timestamp: number;
     folder: string;
     signature: string;
-  }>("/admin/uploads/sign", { method: "POST", token });
+  }>(signPath, { method: "POST", token });
 
   const form = new FormData();
   form.append("file", file);

@@ -32,8 +32,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!t) return clear();
       try {
         const me = await api<{ user: AdminUser }>("/auth/me", { token: t });
-        // Only admins may use the dashboard.
-        if (me.user.role !== "admin") return clear();
+        // Only the store owner (admin) and approved vendors may use the dashboard.
+        if (me.user.role !== "admin" && me.user.role !== "vendor") return clear();
         setToken(t);
         setUser(me.user);
       } catch {
@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         method: "POST",
         body: { email, password },
       });
-      if (res.user.role !== "admin") throw new Error("This account is not an admin account");
+      if (res.user.role !== "admin" && res.user.role !== "vendor") throw new Error("This dashboard is for the store owner and approved vendors");
       localStorage.setItem(TOKEN_KEY, res.token);
       setToken(res.token);
       setUser(res.user);

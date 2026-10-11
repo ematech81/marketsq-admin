@@ -10,7 +10,7 @@ type Category = { _id: string; name: string; slug: string };
 
 export default function CategoriesPage() {
   return (
-    <Shell>
+    <Shell adminOnly>
       <Categories />
     </Shell>
   );
