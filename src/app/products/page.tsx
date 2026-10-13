@@ -41,7 +41,7 @@ function ProductList() {
   const isAdmin = user?.role === "admin";
   const base = isAdmin ? "/admin" : "/vendor";
   const [rows, setRows] = useState<Row[] | null>(null);
-  const [filter, setFilter] = useState("");
+  const [filter, setFilter] = useState(() => (typeof window === "undefined" ? "" : (new URLSearchParams(window.location.search).get("status") ?? "")));
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -176,6 +176,11 @@ function ProductList() {
                             Reject
                           </button>
                         </>
+                      )}
+                      {isAdmin && (
+                        <Link href={`/products/${r._id}/preview`} className="mr-4 font-semibold hover:text-accent-ink">
+                          View
+                        </Link>
                       )}
                       <Link href={`/products/${r._id}`} className="mr-4 hover:text-accent-ink">
                         Edit
