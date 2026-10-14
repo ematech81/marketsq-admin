@@ -52,6 +52,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, [load]);
 
+  // If you sign in or out in another tab, this tab follows, so every tab always shows the same account.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === TOKEN_KEY) load(e.newValue);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [load]);
+
   const value: AuthState = {
     user,
     token,

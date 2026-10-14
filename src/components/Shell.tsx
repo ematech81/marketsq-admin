@@ -16,6 +16,7 @@ const ADMIN_LINKS = [
   { href: "/customers", label: "Customers" },
   { href: "/products", label: "Products" },
   { href: "/payouts", label: "Payouts" },
+  { href: "/banners", label: "Home banners" },
   { href: "/categories", label: "Categories" },
   { href: "/delivery", label: "Delivery fees" },
   { href: "/settings", label: "Settings" },
@@ -76,6 +77,10 @@ export default function Shell({ children, adminOnly = false }: { children: React
             <button onClick={signOut} className="inline-flex min-h-11 cursor-pointer items-center text-white">
               Sign out
             </button>
+            <span className="hidden text-right leading-tight sm:block">
+              <span className="block max-w-56 truncate text-[13px]">{user.email}</span>
+              <span className="block text-[11px] font-semibold tracking-wide text-accent uppercase">{isAdmin ? "Store owner (admin)" : "Vendor account"}</span>
+            </span>
             <span title={user.email} className="flex size-9 items-center justify-center bg-accent text-sm font-bold text-foreground">
               {user.name.charAt(0).toUpperCase()}
             </span>
