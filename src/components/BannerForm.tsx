@@ -203,12 +203,12 @@ export default function BannerForm({ bannerId, initial }: { bannerId?: string; i
           <ImageSlot
             label="Banner picture"
             required
-            hint="Best: 1920 × 427 pixels (very wide, 4.5 to 1). Use the same size for every banner. JPG or PNG up to 10 MB."
+            hint="Best: 1920 × 480 pixels (very wide, 4 to 1). Use the same size for every banner. JPG or PNG up to 10 MB."
             value={v.image}
             onChange={(i) => set("image", i)}
             upload={upload}
-            ratio={4.5}
-            ratioLabel="very wide (about 4.5 to 1)"
+            ratio={4}
+            ratioLabel="very wide (about 4 to 1)"
             minWidth={1600}
             onError={setError}
           />
