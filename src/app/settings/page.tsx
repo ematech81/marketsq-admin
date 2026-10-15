@@ -6,7 +6,13 @@ import { ErrorText, Field, PrimaryButton } from "@/components/form";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
-type Settings = { defaultCommissionRate: number; minPayoutAmount: number; requireListingApproval: boolean };
+type Settings = {
+  defaultCommissionRate: number;
+  minPayoutAmount: number;
+  requireListingApproval: boolean;
+  codEnabled: boolean;
+  codMaxAmount: number;
+};
 
 export default function SettingsPage() {
   return (
@@ -43,6 +49,8 @@ function SettingsForm() {
           defaultCommissionRate: Number(f.get("commission")),
           minPayoutAmount: Number(f.get("minPayout")),
           requireListingApproval: f.get("approval") === "on",
+          codEnabled: f.get("cod") === "on",
+          codMaxAmount: Number(f.get("codMax")),
         },
       });
       setSettings(res.settings);
@@ -96,6 +104,29 @@ function SettingsForm() {
               </span>
             </span>
           </label>
+          <div className="flex flex-col gap-5 border-t border-line pt-5">
+            <p className="font-display text-lg font-semibold">Pay on delivery</p>
+            <label className="flex items-start gap-3 text-sm">
+              <input type="checkbox" name="cod" defaultChecked={settings.codEnabled} className="mt-0.5 size-[18px] accent-accent" />
+              <span>
+                <span className="font-medium">Let customers pay on delivery</span>
+                <span className="block text-[13px] text-muted">
+                  Customers choose it at checkout. The order is placed straight away and you collect the money when it is delivered. It is marked
+                  paid, and the vendor is credited, when you mark the last shipment delivered.
+                </span>
+              </span>
+            </label>
+            <Field
+              label="Largest pay-on-delivery order (₦)"
+              name="codMax"
+              type="number"
+              min={0}
+              step={1}
+              defaultValue={settings.codMaxAmount}
+              hint="Bigger orders must be paid online. A customer can also have at most 3 pay-on-delivery orders waiting to be delivered."
+              required
+            />
+          </div>
           <div className="flex items-center gap-4">
             <PrimaryButton type="submit" busy={busy}>
               Save settings

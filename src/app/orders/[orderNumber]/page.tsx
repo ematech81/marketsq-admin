@@ -21,6 +21,7 @@ type Order = {
   orderNumber: string;
   status: string;
   paymentStatus: string;
+  paymentMethod?: "online" | "cod";
   createdAt: string;
   needsAttention?: string;
   user: { name: string; email: string; phone: string };
@@ -92,6 +93,14 @@ function Detail() {
 
   async function change(s: Shipment, status: string) {
     if (
+      status === "delivered" &&
+      cod &&
+      order?.paymentStatus === "cod" &&
+      !window.confirm(`Pay on delivery: have you collected the money from the customer? Marking this delivered also credits the vendor.`)
+    ) {
+      return;
+    }
+    if (
       status === "cancelled" &&
       !window.confirm(
         "Cancel this shipment? The items go back on sale. You need to refund the customer yourself from your KoraPay dashboard.",
@@ -113,7 +122,9 @@ function Detail() {
 
   if (!order) return error ? <ErrorText message={error} /> : <p className="text-muted">Loading…</p>;
 
-  const unpaid = order.paymentStatus !== "paid";
+  // A pay-on-delivery order is worked on straight away; the money is collected when it is delivered.
+  const unpaid = order.paymentStatus !== "paid" && order.paymentStatus !== "cod";
+  const cod = order.paymentMethod === "cod";
 
   return (
     <div className="flex flex-col gap-6">
@@ -142,6 +153,12 @@ function Detail() {
       )}
       {order.paymentStatus === "pending" && (
         <p className={`${panel} p-4 text-sm`}>This order has not been paid yet, so there is nothing to deliver.</p>
+      )}
+      {order.paymentStatus === "cod" && (
+        <p className="rounded-sm border border-accent bg-[#FBEAE4] p-4 text-sm text-[#8A3219]">
+          <strong>Pay on delivery.</strong> Collect {naira.format(order.total)} from the customer when it is delivered. This order becomes paid when
+          every shipment is delivered.
+        </p>
       )}
 
       <div className="flex flex-wrap items-start gap-6">
@@ -242,8 +259,16 @@ function Detail() {
               <span>Total</span>
               <span className="font-display">{naira.format(order.total)}</span>
             </p>
-            <span className={`text-[13px] font-semibold ${order.paymentStatus === "paid" ? "text-[#166534]" : "text-[#B42318]"}`}>
-              {order.paymentStatus === "paid" ? "Paid with KoraPay" : order.paymentStatus === "pending" ? "Not paid yet" : "Payment needs checking"}
+            <span className={`text-[13px] font-semibold ${order.paymentStatus === "paid" ? "text-[#166534]" : order.paymentStatus === "cod" ? "text-[#8A3219]" : "text-[#B42318]"}`}>
+              {order.paymentStatus === "paid"
+                ? cod
+                  ? "Paid on delivery"
+                  : "Paid with KoraPay"
+                : order.paymentStatus === "cod"
+                  ? `Pay on delivery: collect ${naira.format(order.total)}`
+                  : order.paymentStatus === "pending"
+                    ? "Not paid yet"
+                    : "Payment needs checking"}
             </span>
           </section>
         </aside>
