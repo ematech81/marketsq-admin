@@ -37,6 +37,8 @@ function Counter({ value, max, good }: { value: number; max: number; good?: [num
   );
 }
 
+const NEW_CATEGORY = "__new__";
+
 type Props = {
   productId?: string;
   initial: ProductValues;
@@ -53,6 +55,11 @@ export default function ProductForm({ productId, initial, currentStatus }: Props
 
   const [v, setV] = useState<ProductValues>(initial);
   const [categories, setCategories] = useState<Category[] | null>(null);
+  // Adding a category that is not in the list yet.
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategory, setNewCategory] = useState("");
+  const [categoryBusy, setCategoryBusy] = useState(false);
+  const [categoryError, setCategoryError] = useState("");
   const [needsReview, setNeedsReview] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState<"draft" | "active" | null>(null);
@@ -70,6 +77,28 @@ export default function ProductForm({ productId, initial, currentStatus }: Props
         .catch(() => setNeedsReview(true));
     }
   }, [isVendor]);
+
+  // Adds the category to the shared list (the whole store and every dashboard use it) and picks it.
+  async function addCategory() {
+    const name = newCategory.trim();
+    if (name.length < 2) {
+      setCategoryError("Enter the category name.");
+      return;
+    }
+    setCategoryBusy(true);
+    setCategoryError("");
+    try {
+      const { category } = await api<{ category: Category }>("/categories", { method: "POST", token, body: { name } });
+      setCategories((list) => (list?.some((c) => c._id === category._id) ? list : [...(list ?? []), category].sort((a, b) => a.name.localeCompare(b.name))));
+      setV((p) => ({ ...p, category: category._id }));
+      setAddingCategory(false);
+      setNewCategory("");
+    } catch (err) {
+      setCategoryError(err instanceof Error ? err.message : "Could not add the category");
+    } finally {
+      setCategoryBusy(false);
+    }
+  }
 
   const set = <K extends keyof ProductValues>(key: K, value: ProductValues[K]) => setV((p) => ({ ...p, [key]: value }));
 
@@ -193,7 +222,20 @@ export default function ProductForm({ productId, initial, currentStatus }: Props
                   <span className="text-sm font-medium">
                     Category <span className="text-[#B42318]">*</span>
                   </span>
-                  <select value={v.category} onChange={(e) => set("category", e.target.value)} required className={`${control} h-12`}>
+                  <select
+                    value={addingCategory ? NEW_CATEGORY : v.category}
+                    onChange={(e) => {
+                      if (e.target.value === NEW_CATEGORY) {
+                        setAddingCategory(true);
+                        setCategoryError("");
+                      } else {
+                        setAddingCategory(false);
+                        set("category", e.target.value);
+                      }
+                    }}
+                    required={!addingCategory}
+                    className={`${control} h-12`}
+                  >
                     <option value="" disabled>
                       {categories === null ? "Loading…" : "Choose a category"}
                     </option>
@@ -202,17 +244,31 @@ export default function ProductForm({ productId, initial, currentStatus }: Props
                         {c.name}
                       </option>
                     ))}
+                    {categories !== null && <option value={NEW_CATEGORY}>+ My category is not listed</option>}
                   </select>
-                  {categories?.length === 0 && (
-                    <span className="text-[13px] text-muted">
-                      No categories yet.{" "}
-                      {isVendor ? (
-                        "Ask Square Market to add one."
-                      ) : (
-                        <Link href="/categories" className="font-semibold text-accent-ink underline">
-                          Add one first
-                        </Link>
-                      )}
+                  {addingCategory && (
+                    <span className="mt-1 flex flex-col gap-2 rounded-sm border border-line bg-[#F3F4F5] p-3">
+                      <span className="flex gap-2">
+                        <input
+                          value={newCategory}
+                          onChange={(e) => setNewCategory(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              addCategory();
+                            }
+                          }}
+                          maxLength={40}
+                          placeholder="New category name"
+                          aria-label="New category name"
+                          className={`${control} h-11 min-w-0 flex-1`}
+                        />
+                        <button type="button" onClick={addCategory} disabled={categoryBusy} className="min-h-11 shrink-0 cursor-pointer rounded-sm bg-foreground px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60">
+                          {categoryBusy ? "Adding…" : "Add"}
+                        </button>
+                      </span>
+                      <span className="text-[13px] text-muted">It is added to the list for everyone on Square Market, so check first that it is not there already.</span>
+                      {categoryError && <span role="alert" className="text-[13px] text-[#B42318]">{categoryError}</span>}
                     </span>
                   )}
                 </label>
