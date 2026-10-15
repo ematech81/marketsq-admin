@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { uploadImage } from "@/lib/upload";
 import { ErrorText } from "./form";
 
-type Img = { url: string; publicId?: string } | null;
+type Img = { url: string; publicId?: string; width?: number; height?: number } | null;
 type Category = { _id: string; name: string; slug: string };
 
 export type BannerValues = {
@@ -50,7 +50,7 @@ type SlotProps = {
   hint: string;
   value: Img;
   onChange: (v: Img) => void;
-  upload: (file: File) => Promise<{ url: string; publicId: string }>;
+  upload: (file: File) => Promise<{ url: string; publicId: string; width?: number; height?: number }>;
   // The shape this picture is shown in, and what to warn about.
   ratio: number;
   ratioLabel: string;
@@ -77,7 +77,7 @@ function ImageSlot({ label, required, hint, value, onChange, upload, ratio, rati
       if (w < minWidth) notes.push(`It is only ${w} pixels wide, so it may look blurry. Aim for at least ${minWidth}.`);
       if (Math.abs(w / h - ratio) / ratio > 0.25) notes.push(`It is ${w}×${h}. This spot is ${ratioLabel}, so the edges may be cropped.`);
       const res = await upload(file);
-      onChange({ url: res.url, publicId: res.publicId });
+      onChange({ url: res.url, publicId: res.publicId, width: res.width ?? w, height: res.height ?? h });
       setAdvice(notes.join(" "));
     } catch (err) {
       onError(err instanceof Error ? err.message : "Upload failed");
@@ -203,13 +203,13 @@ export default function BannerForm({ bannerId, initial }: { bannerId?: string; i
           <ImageSlot
             label="Banner picture"
             required
-            hint="Best: 1600 × 470 pixels (wide). JPG or PNG up to 10 MB."
+            hint="Best: 1920 × 427 pixels (very wide, 4.5 to 1). Use the same size for every banner. JPG or PNG up to 10 MB."
             value={v.image}
             onChange={(i) => set("image", i)}
             upload={upload}
-            ratio={1600 / 470}
-            ratioLabel="very wide (about 3.4 to 1)"
-            minWidth={1200}
+            ratio={4.5}
+            ratioLabel="very wide (about 4.5 to 1)"
+            minWidth={1600}
             onError={setError}
           />
           <ImageSlot

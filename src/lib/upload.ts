@@ -1,6 +1,6 @@
 import { api } from "./api";
 
-export type UploadedImage = { url: string; publicId: string };
+export type UploadedImage = { url: string; publicId: string; width?: number; height?: number };
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -33,5 +33,5 @@ export async function uploadImage(file: File, token: string, signPath = "/admin/
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error?.message ?? "Image upload failed");
-  return { url: data.secure_url, publicId: data.public_id };
+  return { url: data.secure_url, publicId: data.public_id, width: data.width, height: data.height };
 }
