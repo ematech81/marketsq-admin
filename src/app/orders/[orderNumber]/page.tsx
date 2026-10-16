@@ -15,7 +15,7 @@ type Shipment = {
   timeline: { status: string; at: string }[];
   deliveryFee: number;
   estimatedDelivery?: string;
-  items: { title: string; quantity: number; price: number; options: { name: string; value: string }[] }[];
+  items: { title: string; image?: string; quantity: number; price: number; options: { name: string; value: string }[] }[];
 };
 
 type Order = {
@@ -284,12 +284,19 @@ function Detail() {
 
                 <ul className="divide-y divide-line border-t border-line">
                   {s.items.map((i, k) => (
-                    <li key={k} className="flex justify-between gap-4 px-6 py-3.5 text-[15px]">
-                      <span>
-                        {i.quantity} × {i.title}
-                        {i.options.length > 0 && <span className="text-muted"> ({i.options.map((o) => `${o.name}: ${o.value}`).join(", ")})</span>}
+                    <li key={k} className="flex items-center gap-4 px-6 py-3.5 text-[15px]">
+                      <span className="relative size-16 shrink-0 overflow-hidden rounded-sm border border-line bg-surface">
+                        {i.image && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={i.image} alt={i.title} className="h-full w-full object-cover" />
+                        )}
                       </span>
-                      <span className="font-semibold">{naira.format(i.price * i.quantity)}</span>
+                      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span className="font-semibold">{i.title}</span>
+                        {i.options.length > 0 && <span className="text-[13px] text-muted">{i.options.map((o) => `${o.name}: ${o.value}`).join(", ")}</span>}
+                        <span className="text-[13px] text-muted">Qty {i.quantity}</span>
+                      </span>
+                      <span className="shrink-0 font-semibold">{naira.format(i.price * i.quantity)}</span>
                     </li>
                   ))}
                 </ul>
