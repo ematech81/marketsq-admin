@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import NotificationBell from "./NotificationBell";
 
 const STORE_URL = process.env.NEXT_PUBLIC_STORE_URL ?? "http://localhost:3000";
 
@@ -71,6 +72,7 @@ export default function Shell({ children, adminOnly = false }: { children: React
             <span className="font-sans text-[13px] font-medium text-[#D5D8DC]">{isAdmin ? "Admin" : "Vendor"}</span>
           </Link>
           <div className="flex items-center gap-4 text-sm">
+            <NotificationBell />
             <a href={STORE_URL} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center text-white">
               View store
             </a>
