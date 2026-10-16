@@ -14,6 +14,8 @@ export type ProductValues = {
   sku: string;
   gtin: string;
   images: Photo[];
+  // One key feature per line.
+  highlights: string;
   details: { label: string; value: string }[];
   variants: { name: string; options: string }[];
   seoTitle: string;
@@ -33,6 +35,7 @@ export const emptyProduct: ProductValues = {
   sku: "",
   gtin: "",
   images: [],
+  highlights: "",
   details: [],
   variants: [],
   seoTitle: "",
@@ -54,6 +57,7 @@ export type ApiProduct = {
   gtin?: string;
   status: "draft" | "pending" | "active" | "rejected";
   images: { url: string; publicId?: string; alt?: string }[];
+  highlights?: string[];
   details?: { label: string; value: string }[];
   variants: { name: string; options: string[] }[];
   seoTitle?: string;
@@ -74,6 +78,7 @@ export function fromApi(p: ApiProduct): ProductValues {
     sku: p.sku ?? "",
     gtin: p.gtin ?? "",
     images: p.images.map((i) => ({ url: i.url, publicId: i.publicId ?? "", alt: i.alt ?? "" })),
+    highlights: (p.highlights ?? []).join("\n"),
     details: (p.details ?? []).map((d) => ({ label: d.label, value: d.value })),
     variants: p.variants.map((x) => ({ name: x.name, options: x.options.join(", ") })),
     seoTitle: p.seoTitle ?? "",
@@ -100,6 +105,7 @@ export function toPayload(v: ProductValues, status: "active" | "draft") {
     gtin: v.gtin.trim(),
     status,
     images: v.images.map((i) => ({ url: i.url, publicId: i.publicId || undefined, alt: i.alt.trim() })),
+    highlights: v.highlights.split("\n").map((l) => l.trim()).filter(Boolean),
     details: v.details.map((d) => ({ label: d.label.trim(), value: d.value.trim() })).filter((d) => d.label && d.value),
     variants,
     seoTitle: v.seoTitle.trim(),

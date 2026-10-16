@@ -17,15 +17,6 @@ type Row = {
   createdAt: string;
   itemCount: number;
   payment?: string;
-  shipments: { id: string; status: string }[];
-};
-
-// The next step for a shipment, shown as a button right in the list.
-const NEXT: Record<string, { status: string; label: string } | undefined> = {
-  placed: { status: "confirmed", label: "Confirm order" },
-  confirmed: { status: "packed", label: "Mark as packed" },
-  packed: { status: "shipped", label: "Mark as shipped" },
-  shipped: { status: "delivered", label: "Mark as delivered" },
 };
 
 const TABS = [
@@ -68,7 +59,6 @@ function Orders() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [counts, setCounts] = useState<{ open: number; attention: number } | null>(null);
   const [error, setError] = useState("");
-  const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -85,23 +75,6 @@ function Orders() {
     const timer = setTimeout(load, 0);
     return () => clearTimeout(timer);
   }, [load]);
-
-  // Moves the order's only live shipment one step. Orders with several shipments are opened instead.
-  async function advance(o: Row, shipmentId: string, status: string) {
-    if (status === "delivered" && o.payment === "Pay on delivery" && !window.confirm("Pay on delivery: have you collected the money from the customer? Marking this delivered also credits the vendor.")) {
-      return;
-    }
-    setBusyId(o.orderNumber);
-    setError("");
-    try {
-      await api(`/admin/shipments/${shipmentId}/status`, { method: "PATCH", token, body: { status } });
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update the order");
-    } finally {
-      setBusyId(null);
-    }
-  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -141,13 +114,13 @@ function Orders() {
             <table className="w-full min-w-160 border-collapse text-sm">
               <thead>
                 <tr className="bg-[#F3F4F5] text-left">
-                  <th className={th}>Order</th>
+                  <th className={th}>Order no.</th>
                   <th className={th}>Customer</th>
                   <th className={th}>Items</th>
                   <th className={th}>Placed</th>
                   <th className={th}>Total</th>
                   <th className={th}>Status</th>
-                  <th className={th}>Next step</th>
+                  <th className={th}><span className="sr-only">Manage</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -174,35 +147,12 @@ function Orders() {
                       {o.payment && <span className="mt-1 block text-[12px] text-muted">{o.payment}</span>}
                     </td>
                     <td className={td}>
-                      {(() => {
-                        const live = o.shipments.filter((s) => s.status !== "cancelled" && s.status !== "delivered");
-                        const single = live.length === 1 ? live[0] : null;
-                        const next = single ? NEXT[single.status] : undefined;
-                        if (single && next) {
-                          return (
-                            <button
-                              type="button"
-                              disabled={busyId === o.orderNumber}
-                              onClick={() => advance(o, single.id, next.status)}
-                              className="min-h-9 cursor-pointer rounded-sm bg-accent px-3 text-[13px] font-semibold whitespace-nowrap text-foreground hover:opacity-90 disabled:opacity-60"
-                            >
-                              {busyId === o.orderNumber ? "Saving…" : next.label}
-                            </button>
-                          );
-                        }
-                        if (live.length > 1) {
-                          return (
-                            <Link href={`/orders/${o.orderNumber}`} className="text-[13px] font-semibold text-accent-ink underline">
-                              {live.length} shipments: manage
-                            </Link>
-                          );
-                        }
-                        return (
-                          <Link href={`/orders/${o.orderNumber}`} className="text-[13px] font-semibold text-accent-ink underline">
-                            View
-                          </Link>
-                        );
-                      })()}
+                      <Link
+                        href={`/orders/${o.orderNumber}`}
+                        className="inline-flex min-h-9 items-center rounded-sm bg-accent px-3.5 text-[13px] font-semibold whitespace-nowrap text-foreground hover:opacity-90"
+                      >
+                        Manage order
+                      </Link>
                     </td>
                   </tr>
                 ))}

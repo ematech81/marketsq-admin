@@ -307,7 +307,18 @@ export default function ProductForm({ productId, initial, currentStatus }: Props
 
           <section className={card}>
             <h2 className={h2}>Product details</h2>
-            <p className={sub}>Facts shown in a table on the product page, such as material, weight or warranty. Google reads these too.</p>
+            <label className="mb-6 flex flex-col gap-1.5">
+              <span className="text-sm font-medium">Key features</span>
+              <textarea
+                value={v.highlights}
+                onChange={(e) => set("highlights", e.target.value)}
+                rows={5}
+                placeholder={"Lightweight and non-slip\nEasy to put on and take off\nThe fabric can be washed"}
+                className={`${control} py-3`}
+              />
+              <span className="text-[13px] text-muted">The main selling points, one per line (up to 8). Shown as a bullet list next to the specifications.</span>
+            </label>
+            <p className={sub}>Specifications: facts shown in a table on the product page, such as material, weight or warranty. Google reads these too.</p>
             {v.details.length > 0 && (
               <div className="mb-4 flex flex-col gap-3">
                 {v.details.map((d, i) => (
