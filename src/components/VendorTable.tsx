@@ -19,6 +19,8 @@ export type VendorRow = {
   status: "pending" | "approved" | "rejected" | "suspended";
   rejectionReason?: string;
   commissionRate?: number | null;
+  deliveryMode?: "platform" | "self";
+  deliveryLocked?: boolean;
   createdAt: string;
   user?: { name: string; email: string; phone: string };
 };
@@ -79,6 +81,25 @@ export default function VendorTable({ rows, onChanged }: { rows: VendorRow[]; on
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save the commission");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  // Lets a vendor deliver their own orders, or makes Square Market deliver for them.
+  async function toggleDelivery(row: VendorRow) {
+    const locking = !row.deliveryLocked;
+    const question = locking
+      ? `Make Square Market deliver for "${row.businessName}"? They will no longer be able to deliver their own orders.`
+      : `Let "${row.businessName}" choose to deliver their own orders again?`;
+    if (!window.confirm(question)) return;
+    setBusyId(row._id);
+    setError("");
+    try {
+      await api(`/admin/vendors/${row._id}/delivery`, { method: "PATCH", token, body: { locked: locking } });
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not change the delivery setting");
     } finally {
       setBusyId(null);
     }
@@ -161,6 +182,15 @@ export default function VendorTable({ rows, onChanged }: { rows: VendorRow[]; on
                         className={`${btn} mr-2 border border-[#C6C6CB] bg-white text-foreground`}
                       >
                         Commission: {v.commissionRate == null ? "default" : `${v.commissionRate}%`}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busyId === v._id}
+                        onClick={() => toggleDelivery(v)}
+                        title={v.deliveryLocked ? "Click to let them deliver their own orders" : "Click to make Square Market deliver for them"}
+                        className={`${btn} mr-2 border border-[#C6C6CB] bg-white text-foreground`}
+                      >
+                        Delivery: {v.deliveryMode === "self" ? "themselves" : v.deliveryLocked ? "Square Market (locked)" : "Square Market"}
                       </button>
                       <button
                         type="button"

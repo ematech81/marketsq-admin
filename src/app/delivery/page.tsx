@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Shell from "@/components/Shell";
+import VendorDelivery from "@/components/VendorDelivery";
 import { ErrorText, PrimaryButton } from "@/components/form";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -14,10 +15,16 @@ const blank = (): Rows => Object.fromEntries(NIGERIA_STATES.map((s) => [s, { fee
 
 export default function DeliveryPage() {
   return (
-    <Shell adminOnly>
-      <Delivery />
+    <Shell>
+      <RoleDelivery />
     </Shell>
   );
+}
+
+// The store owner sets Square Market's delivery fees. A vendor chooses who delivers their orders.
+function RoleDelivery() {
+  const { user } = useAuth();
+  return user?.role === "vendor" ? <VendorDelivery /> : <Delivery />;
 }
 
 function Delivery() {

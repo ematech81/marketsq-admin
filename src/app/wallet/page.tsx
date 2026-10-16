@@ -8,6 +8,9 @@ import { useAuth } from "@/lib/auth";
 
 type Wallet = {
   balance: number;
+  pending: number;
+  holdDays: number;
+  waiting: { orderNumber?: string; net: number; releaseAt: string; onHold: boolean }[];
   minPayoutAmount: number;
   commissionRate: number;
   bank: { bankName: string; accountNumber: string; accountName: string };
@@ -21,6 +24,8 @@ const day = (iso: string) => new Date(iso).toLocaleDateString("en-NG", { day: "n
 const TYPE_LABEL: Record<string, string> = {
   sale: "Sale",
   commission: "Square Market commission",
+  delivery_fee: "Delivery fee (you delivered it)",
+  release: "Moved to your available balance",
   payout: "Payout requested",
   payout_reversal: "Payout returned to wallet",
   refund: "Taken back after a refund",
@@ -97,7 +102,17 @@ function WalletView() {
               <span className="text-sm text-[#45474B]">Available to withdraw</span>
               <span className="font-display text-4xl font-bold">{naira.format(wallet.balance)}</span>
               <span className="text-[13px] text-muted">
-                You earn when an order is delivered: the items total minus Square Market&apos;s {wallet.commissionRate}% commission.
+                You earn when an order is delivered: the items total minus Square Market&apos;s {wallet.commissionRate}% commission, plus the delivery
+                fee on orders you deliver yourself.
+              </span>
+            </section>
+
+            <section className={`${panel} flex min-w-60 flex-1 flex-col gap-2 p-6`}>
+              <span className="text-sm text-[#45474B]">On hold (protection period)</span>
+              <span className="font-display text-4xl font-bold">{naira.format(wallet.pending)}</span>
+              <span className="text-[13px] text-muted">
+                Earned from delivered orders. It becomes available {wallet.holdDays} days after delivery (a little longer for your first 3 deliveries), so a
+                customer can report a problem first.
               </span>
             </section>
 
@@ -115,6 +130,25 @@ function WalletView() {
               </form>
             </section>
           </div>
+
+          {wallet.waiting.length > 0 && (
+            <section className={panel}>
+              <h2 className="border-b border-line px-6 py-5 font-display text-[22px] font-semibold">On hold</h2>
+              <ul className="divide-y divide-line">
+                {wallet.waiting.map((w, i) => (
+                  <li key={i} className="flex flex-wrap items-center justify-between gap-3 px-6 py-3.5 text-sm">
+                    <span>
+                      Order {w.orderNumber}
+                      <span className="block text-[13px] text-muted">
+                        {w.onHold ? "A customer reported a problem. On hold until Square Market decides." : `Available on ${day(w.releaseAt)}`}
+                      </span>
+                    </span>
+                    <span className="font-display text-base font-bold">{naira.format(w.net)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <section className={panel}>
             <h2 className="border-b border-line px-6 py-5 font-display text-[22px] font-semibold">Payouts</h2>
@@ -153,10 +187,14 @@ function WalletView() {
                       {TYPE_LABEL[t.type] ?? t.type}
                       <span className="block text-[13px] text-muted">{day(t.createdAt)}</span>
                     </span>
-                    <span className={`font-display text-base font-bold ${t.amount < 0 ? "text-[#B42318]" : "text-[#166534]"}`}>
-                      {t.amount < 0 ? "-" : "+"}
-                      {naira.format(Math.abs(t.amount))}
-                    </span>
+                    {t.type === "release" ? (
+                      <span className="font-display text-base font-bold text-muted">{naira.format(t.amount)}</span>
+                    ) : (
+                      <span className={`font-display text-base font-bold ${t.amount < 0 ? "text-[#B42318]" : "text-[#166534]"}`}>
+                        {t.amount < 0 ? "-" : "+"}
+                        {naira.format(Math.abs(t.amount))}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -17,6 +17,7 @@ type Row = {
   createdAt: string;
   itemCount: number;
   payment?: string;
+  dispute?: boolean;
 };
 
 const TABS = [
@@ -145,6 +146,7 @@ function Orders() {
                         {o.status}
                       </span>
                       {o.payment && <span className="mt-1 block text-[12px] text-muted">{o.payment}</span>}
+                      {o.dispute && <span className="mt-1 block text-[12px] font-semibold text-[#B42318]">Problem reported</span>}
                     </td>
                     <td className={td}>
                       <Link

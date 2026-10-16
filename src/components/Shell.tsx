@@ -16,6 +16,7 @@ const ADMIN_LINKS = [
   { href: "/vendors", label: "Vendors" },
   { href: "/customers", label: "Customers" },
   { href: "/products", label: "Products" },
+  { href: "/earnings", label: "Earnings" },
   { href: "/payouts", label: "Payouts" },
   { href: "/banners", label: "Home banners" },
   { href: "/categories", label: "Categories" },
@@ -27,6 +28,7 @@ const VENDOR_LINKS = [
   { href: "/", label: "Overview" },
   { href: "/orders", label: "Orders" },
   { href: "/products", label: "Products" },
+  { href: "/delivery", label: "Delivery" },
   { href: "/wallet", label: "Wallet" },
 ];
 

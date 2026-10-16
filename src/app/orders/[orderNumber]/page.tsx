@@ -15,6 +15,12 @@ type Shipment = {
   timeline: { status: string; at: string }[];
   deliveryFee: number;
   estimatedDelivery?: string;
+  fulfilledBy?: "platform" | "vendor";
+  delivery?: { courierName?: string; courierPhone?: string; note?: string };
+  deliveryCode?: string;
+  deliveredBy?: "code" | "customer" | "admin";
+  dispute?: { status: "open" | "released" | "refunded"; reason?: string; note?: string };
+  earning?: { gross: number; commission: number; deliveryFee: number; net: number; releaseAt?: string; releasedAt?: string; reversedAt?: string };
   items: { title: string; image?: string; quantity: number; price: number; options: { name: string; value: string }[] }[];
 };
 
@@ -94,6 +100,27 @@ function Detail() {
     const timer = setTimeout(load, 0);
     return () => clearTimeout(timer);
   }, [load]);
+
+  // Settles a problem the customer reported.
+  async function settle(s: Shipment, resolution: "release" | "refund") {
+    const note = window.prompt(
+      resolution === "release"
+        ? "Release the vendor's money? Add a short note (optional)."
+        : "Take the vendor's earnings back? You must refund the customer yourself from the KoraPay dashboard. Add a short note (optional).",
+      "",
+    );
+    if (note === null) return;
+    setBusyId(s._id);
+    setError("");
+    try {
+      await api(`/admin/shipments/${s._id}/dispute`, { method: "POST", token, body: { resolution, note: note.trim() || undefined } });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not settle this");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   async function change(s: Shipment, status: string) {
     const cod = order?.paymentMethod === "cod";
@@ -237,6 +264,63 @@ function Detail() {
                   )}
                 </div>
 
+                <div className="flex flex-wrap gap-x-6 gap-y-1 border-b border-line bg-background px-6 py-3 text-[13px] text-[#45474B]">
+                  <span>
+                    <strong className="text-foreground">Delivered by:</strong> {s.fulfilledBy === "vendor" ? `${s.vendorName} (their own delivery)` : "Square Market"}
+                  </span>
+                  {s.delivery?.courierName && (
+                    <span>
+                      <strong className="text-foreground">Courier:</strong> {s.delivery.courierName}
+                      {s.delivery.courierPhone ? `, ${s.delivery.courierPhone}` : ""}
+                      {s.delivery.note ? ` (${s.delivery.note})` : ""}
+                    </span>
+                  )}
+                  {s.deliveryCode && s.status === "shipped" && (
+                    <span>
+                      <strong className="text-foreground">Delivery code:</strong> <span className="font-mono">{s.deliveryCode}</span>
+                    </span>
+                  )}
+                  {s.deliveredBy && (
+                    <span>
+                      <strong className="text-foreground">Confirmed by:</strong>{" "}
+                      {s.deliveredBy === "code" ? "the delivery code" : s.deliveredBy === "customer" ? "the customer" : "Square Market"}
+                    </span>
+                  )}
+                </div>
+
+                {s.dispute?.status === "open" && (
+                  <div className="flex flex-col gap-3 border-b border-[#B42318] bg-[#FEF3F2] px-6 py-4 text-sm text-[#B42318]">
+                    <p>
+                      <strong>The customer reported a problem:</strong> {s.dispute.reason}
+                    </p>
+                    <p className="text-[13px]">The vendor&apos;s money for this shipment is on hold until you decide.</p>
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        type="button"
+                        disabled={busyId === s._id}
+                        onClick={() => settle(s, "release")}
+                        className="min-h-11 cursor-pointer rounded-sm bg-foreground px-5 text-sm font-semibold text-white disabled:opacity-60"
+                      >
+                        Vendor was right: release their money
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busyId === s._id}
+                        onClick={() => settle(s, "refund")}
+                        className="min-h-11 cursor-pointer rounded-sm border border-[#B42318] bg-white px-5 text-sm font-semibold text-[#B42318] disabled:opacity-60"
+                      >
+                        Customer was right: take it back
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {s.dispute && s.dispute.status !== "open" && (
+                  <p className="border-b border-line bg-background px-6 py-3 text-[13px] text-[#45474B]">
+                    A problem was reported and settled: {s.dispute.status === "released" ? "the vendor was paid" : "the vendor's earnings were taken back"}.
+                    {s.dispute.note ? ` Note: ${s.dispute.note}` : ""}
+                  </p>
+                )}
+
                 {s.status === "cancelled" ? (
                   <p className="p-6 text-[15px] font-semibold text-[#B42318]">This shipment was cancelled.</p>
                 ) : (
@@ -300,6 +384,21 @@ function Detail() {
                     </li>
                   ))}
                 </ul>
+
+                {s.earning && (
+                  <p className="border-t border-line bg-background px-6 py-3 text-[13px] text-[#45474B]">
+                    Vendor earns <strong className="text-foreground">{naira.format(s.earning.net)}</strong> ({naira.format(s.earning.gross)} sale, minus{" "}
+                    {naira.format(s.earning.commission)} commission
+                    {s.earning.deliveryFee > 0 ? `, plus ${naira.format(s.earning.deliveryFee)} delivery fee` : ""}).{" "}
+                    {s.earning.reversedAt
+                      ? "Taken back after a refund."
+                      : s.earning.releasedAt
+                        ? "Already released to the vendor."
+                        : s.earning.releaseAt
+                          ? `Held until ${new Date(s.earning.releaseAt).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}.`
+                          : ""}
+                  </p>
+                )}
 
                 {s.status !== "delivered" && s.status !== "cancelled" && !unpaid && (
                   <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-background px-6 py-4">

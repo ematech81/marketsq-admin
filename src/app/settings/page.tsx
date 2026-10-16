@@ -12,6 +12,8 @@ type Settings = {
   requireListingApproval: boolean;
   codEnabled: boolean;
   codMaxAmount: number;
+  payoutHoldDays: number;
+  newVendorExtraHoldDays: number;
 };
 
 export default function SettingsPage() {
@@ -51,6 +53,8 @@ function SettingsForm() {
           requireListingApproval: f.get("approval") === "on",
           codEnabled: f.get("cod") === "on",
           codMaxAmount: Number(f.get("codMax")),
+          payoutHoldDays: Number(f.get("holdDays")),
+          newVendorExtraHoldDays: Number(f.get("newVendorDays")),
         },
       });
       setSettings(res.settings);
@@ -104,6 +108,31 @@ function SettingsForm() {
               </span>
             </span>
           </label>
+          <div className="flex flex-col gap-5 border-t border-line pt-5">
+            <p className="font-display text-lg font-semibold">When vendors are paid</p>
+            <Field
+              label="Waiting period after delivery (days)"
+              name="holdDays"
+              type="number"
+              min={0}
+              max={60}
+              step={1}
+              defaultValue={settings.payoutHoldDays}
+              hint="After an order is delivered, the vendor's earnings wait this long before they can be paid out. The customer can report a problem in this time. Use 0 to pay at once."
+              required
+            />
+            <Field
+              label="Extra days for a new vendor's first 3 deliveries"
+              name="newVendorDays"
+              type="number"
+              min={0}
+              max={60}
+              step={1}
+              defaultValue={settings.newVendorExtraHoldDays}
+              hint="New vendors have no track record yet, so their first deliveries wait a little longer."
+              required
+            />
+          </div>
           <div className="flex flex-col gap-5 border-t border-line pt-5">
             <p className="font-display text-lg font-semibold">Pay on delivery</p>
             <label className="flex items-start gap-3 text-sm">
