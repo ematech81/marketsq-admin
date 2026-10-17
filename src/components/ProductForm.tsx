@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { flatten, pathLabel } from "@/lib/categoryTree";
 import { useAuth } from "@/lib/auth";
 import { emptyProduct, toPayload, type ProductValues } from "@/lib/productForm";
 import { slugify, STORE_HOST } from "@/lib/seo";
@@ -16,7 +17,7 @@ import { ErrorText, Field } from "./form";
 export { emptyProduct };
 export type { ProductValues };
 
-type Category = { _id: string; name: string };
+type Category = { _id: string; name: string; slug: string; parent?: string | null };
 
 const card = "rounded-sm border border-line bg-white p-6";
 const h2 = "font-display text-xl font-semibold";
@@ -58,6 +59,8 @@ export default function ProductForm({ productId, initial, currentStatus }: Props
   // Adding a category that is not in the list yet.
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategory, setNewCategory] = useState("");
+  // Where the new category goes: the top level, or inside another one.
+  const [newParent, setNewParent] = useState("");
   const [categoryBusy, setCategoryBusy] = useState(false);
   const [categoryError, setCategoryError] = useState("");
   const [needsReview, setNeedsReview] = useState(true);
@@ -88,11 +91,12 @@ export default function ProductForm({ productId, initial, currentStatus }: Props
     setCategoryBusy(true);
     setCategoryError("");
     try {
-      const { category } = await api<{ category: Category }>("/categories", { method: "POST", token, body: { name } });
+      const { category } = await api<{ category: Category }>("/categories", { method: "POST", token, body: { name, parent: newParent || undefined } });
       setCategories((list) => (list?.some((c) => c._id === category._id) ? list : [...(list ?? []), category].sort((a, b) => a.name.localeCompare(b.name))));
       setV((p) => ({ ...p, category: category._id }));
       setAddingCategory(false);
       setNewCategory("");
+      setNewParent("");
     } catch (err) {
       setCategoryError(err instanceof Error ? err.message : "Could not add the category");
     } finally {
@@ -239,11 +243,12 @@ export default function ProductForm({ productId, initial, currentStatus }: Props
                     <option value="" disabled>
                       {categories === null ? "Loading…" : "Choose a category"}
                     </option>
-                    {categories?.map((c) => (
-                      <option key={c._id} value={c._id}>
-                        {c.name}
-                      </option>
-                    ))}
+                    {categories &&
+                      flatten(categories).map((c) => (
+                        <option key={c._id} value={c._id}>
+                          {c.depth > 0 ? pathLabel(categories, c._id) : c.name}
+                        </option>
+                      ))}
                     {categories !== null && <option value={NEW_CATEGORY}>+ My category is not listed</option>}
                   </select>
                   {addingCategory && (
@@ -267,6 +272,22 @@ export default function ProductForm({ productId, initial, currentStatus }: Props
                           {categoryBusy ? "Adding…" : "Add"}
                         </button>
                       </span>
+                      <select
+                        value={newParent}
+                        onChange={(e) => setNewParent(e.target.value)}
+                        aria-label="Goes inside"
+                        className={`${control} h-11`}
+                      >
+                        <option value="">Top level (not inside another category)</option>
+                        {categories &&
+                          flatten(categories)
+                            .filter((c) => c.depth < 2)
+                            .map((c) => (
+                              <option key={c._id} value={c._id}>
+                                Inside: {c.depth > 0 ? pathLabel(categories, c._id) : c.name}
+                              </option>
+                            ))}
+                      </select>
                       <span className="text-[13px] text-muted">It is added to the list for everyone on Square Market, so check first that it is not there already.</span>
                       {categoryError && <span role="alert" className="text-[13px] text-[#B42318]">{categoryError}</span>}
                     </span>

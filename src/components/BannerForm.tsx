@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { topLevel } from "@/lib/categoryTree";
 import { useAuth } from "@/lib/auth";
 import { uploadImage } from "@/lib/upload";
 import { ErrorText } from "./form";
 
 type Img = { url: string; publicId?: string; width?: number; height?: number } | null;
-type Category = { _id: string; name: string; slug: string };
+type Category = { _id: string; name: string; slug: string; parent?: string | null };
 
 export type BannerValues = {
   title: string;
@@ -262,7 +263,7 @@ export default function BannerForm({ bannerId, initial }: { bannerId?: string; i
               <button type="button" onClick={() => set("link", "/products")} className="min-h-9 cursor-pointer rounded-sm border border-line bg-white px-2.5 text-[13px] hover:border-foreground">
                 All products
               </button>
-              {categories.map((c) => (
+              {topLevel(categories).map((c) => (
                 <button key={c._id} type="button" onClick={() => set("link", `/products?category=${c.slug}`)} className="min-h-9 cursor-pointer rounded-sm border border-line bg-white px-2.5 text-[13px] hover:border-foreground">
                   {c.name}
                 </button>
