@@ -106,8 +106,21 @@ export default function ProductForm({ productId, initial, currentStatus }: Props
 
   const set = <K extends keyof ProductValues>(key: K, value: ProductValues[K]) => setV((p) => ({ ...p, [key]: value }));
 
+  // The key features: one per line, empty lines ignored. At most 8, each up to 200 characters.
+  const featureLines = v.highlights.split("\n").map((l) => l.trim()).filter(Boolean);
+  const tooManyFeatures = featureLines.length > 8;
+  const longFeature = featureLines.find((l) => l.length > 200);
+
   async function save(status: "draft" | "active") {
     if (!formRef.current?.reportValidity()) return;
+    if (tooManyFeatures) {
+      setError(`Key features: you have ${featureLines.length} lines, but the most is 8. Keep the best 8, one per line. Put the rest in the description.`);
+      return;
+    }
+    if (longFeature) {
+      setError(`Key features: each line can be up to 200 characters. This one is ${longFeature.length}: "${longFeature.slice(0, 50)}…"`);
+      return;
+    }
     if (!v.category) {
       setError("Choose a category.");
       return;
@@ -337,7 +350,17 @@ export default function ProductForm({ productId, initial, currentStatus }: Props
                 placeholder={"Lightweight and non-slip\nEasy to put on and take off\nThe fabric can be washed"}
                 className={`${control} py-3`}
               />
-              <span className="text-[13px] text-muted">The main selling points, one per line (up to 8). Shown as a bullet list next to the specifications.</span>
+              <span className="flex items-baseline justify-between gap-3 text-[13px]">
+                <span className="text-muted">
+                  The main selling points, one short line each (up to 8). For a longer text, use the description. Shown as a bullet list next to the specifications.
+                </span>
+                <span className={`shrink-0 font-semibold ${tooManyFeatures ? "text-[#B42318]" : "text-muted"}`}>{featureLines.length} of 8</span>
+              </span>
+              {tooManyFeatures && (
+                <span role="alert" className="text-[13px] font-semibold text-[#B42318]">
+                  Too many lines. Remove {featureLines.length - 8}, or move them into the description, before you submit.
+                </span>
+              )}
             </label>
             <p className={sub}>Specifications: facts shown in a table on the product page, such as material, weight or warranty. Google reads these too.</p>
             {v.details.length > 0 && (
